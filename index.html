@@ -1,0 +1,2680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIT - Police Interview Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bitter:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Tokens ─────────────────────────────────────────────────── */
+:root {
+  --bg:        #0b1120;
+  --panel:     #111a2e;
+  --panel-alt: #0e1528;
+  --surface:   #162036;
+  --border:    #1c2a44;
+  --gold:      #c9a84c;
+  --gold-dim:  rgba(201,168,76,.15);
+  --gold-glow: rgba(201,168,76,.25);
+  --text:      #e0ddd5;
+  --text-sec:  #8a9bb5;
+  --text-muted:#556178;
+  --officer:   #3b82f6;
+  --suspect:   #ef4444;
+  --system-c:  #8b5cf6;
+  --green:     #22c55e;
+  --amber:     #f59e0b;
+  --red:       #ef4444;
+  --font-brand: 'Bebas Neue', sans-serif;
+  --font-head:  'Bitter', serif;
+  --font-body:  'Outfit', sans-serif;
+  --font-mono:  'IBM Plex Mono', monospace;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── Screens ────────────────────────────────────────────────────────── */
+.screen { display: none; height: 100vh; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* ── Connection Banner ──────────────────────────────────────────────── */
+.conn-banner {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: rgba(239,68,68,.12);
+  border-bottom: 1px solid rgba(239,68,68,.3);
+  font-size: 13px;
+  color: var(--red);
+}
+.conn-banner.visible { display: flex; }
+.conn-banner .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--red);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SCREEN 1 — SCENARIO SELECTION
+   ══════════════════════════════════════════════════════════════════════ */
+.select-header {
+  padding: 32px 24px 0;
+  text-align: center;
+}
+.brand {
+  font-family: var(--font-brand);
+  font-size: 56px;
+  letter-spacing: 4px;
+  color: var(--gold);
+  line-height: 1;
+}
+.brand-sub {
+  font-family: var(--font-head);
+  font-size: 16px;
+  color: var(--text-sec);
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+/* Mode tabs */
+.mode-bar {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin: 20px auto 0;
+  padding: 4px;
+  background: var(--panel);
+  border-radius: 10px;
+  width: fit-content;
+  flex-wrap: wrap;
+}
+.mode-tab {
+  padding: 7px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-sec);
+  transition: all .15s;
+  white-space: nowrap;
+}
+.mode-tab:hover { color: var(--text); }
+.mode-tab.active {
+  background: var(--surface);
+  color: var(--gold);
+  box-shadow: 0 1px 4px rgba(0,0,0,.3);
+}
+.mode-tab .mode-count {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+.mode-tab.active .mode-count { color: var(--gold); opacity: .7; }
+
+/* Difficulty tabs */
+.diff-bar {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 12px auto 0;
+  padding: 4px;
+  background: var(--panel);
+  border-radius: 10px;
+  width: fit-content;
+}
+.diff-tab {
+  padding: 8px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-sec);
+  transition: all .15s;
+}
+.diff-tab:hover { color: var(--text); }
+.diff-tab.active {
+  background: var(--surface);
+  color: var(--gold);
+  box-shadow: 0 1px 4px rgba(0,0,0,.3);
+}
+.diff-tab[data-diff="beginner"].active  { color: var(--green); }
+.diff-tab[data-diff="intermediate"].active { color: var(--amber); }
+.diff-tab[data-diff="advanced"].active  { color: var(--red); }
+
+/* Cards grid */
+.cards-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+  display: flex;
+  flex-direction: column;
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0,0,0,.35);
+  border-color: var(--gold-glow);
+}
+.card.hidden { display: none; }
+
+.card-stripe {
+  height: 4px;
+}
+.card-stripe.beginner    { background: var(--green); }
+.card-stripe.intermediate{ background: var(--amber); }
+.card-stripe.advanced    { background: var(--red); }
+
+.card-body {
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-offence {
+  font-family: var(--font-head);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.diff-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.diff-badge.beginner     { background: rgba(34,197,94,.12); color: var(--green); }
+.diff-badge.intermediate { background: rgba(245,158,11,.12); color: var(--amber); }
+.diff-badge.advanced     { background: rgba(239,68,68,.12); color: var(--red); }
+
+.card-suspect {
+  font-size: 14px;
+  color: var(--text-sec);
+}
+.card-suspect strong { color: var(--text); font-weight: 600; }
+
+.card-behaviour {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface);
+  padding: 4px 10px;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.card-desc {
+  font-size: 13px;
+  color: var(--text-sec);
+  line-height: 1.55;
+  flex: 1;
+}
+
+.card-btn {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid var(--gold-dim);
+  border-radius: 8px;
+  background: var(--gold-dim);
+  color: var(--gold);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: .5px;
+  transition: all .15s;
+}
+.card-btn:hover {
+  background: var(--gold);
+  color: var(--bg);
+  border-color: var(--gold);
+}
+
+/* Footer credit */
+.select-footer {
+  padding: 12px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SCREEN 2 — INTERVIEW ROOM
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Interview header */
+.interview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.ih-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.back-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-sec);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.back-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+.ih-title {
+  font-family: var(--font-head);
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* PEACE pills */
+.peace-pills {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.peace-pill {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  transition: all .2s;
+}
+.peace-pill.active {
+  background: var(--gold-dim);
+  color: var(--gold);
+  border-color: var(--gold-glow);
+}
+.peace-pill.completed {
+  background: rgba(34,197,94,.1);
+  color: var(--green);
+  border-color: rgba(34,197,94,.25);
+}
+
+/* Timer + REC */
+.ih-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+.rec-dot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--red);
+  letter-spacing: 1px;
+}
+.rec-dot .dot {
+  width: 10px;
+  height: 10px;
+  background: var(--red);
+  border-radius: 50%;
+  animation: pulse-rec 1.5s ease-in-out infinite;
+}
+@keyframes pulse-rec {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,.5); }
+  50%      { opacity: .5; box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+}
+.timer {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  min-width: 55px;
+  text-align: right;
+}
+
+/* Interview body */
+.interview-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Briefing panel */
+.briefing-panel {
+  background: var(--panel-alt);
+  border-bottom: 1px solid var(--border);
+  max-height: 300px;
+  overflow-y: auto;
+  transition: max-height .3s ease;
+}
+.briefing-panel.collapsed { max-height: 0; overflow: hidden; border-bottom: none; }
+
+.briefing-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 20px;
+  background: var(--panel);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .3px;
+}
+.briefing-toggle .chevron {
+  transition: transform .2s;
+  font-size: 10px;
+}
+.briefing-toggle.collapsed .chevron { transform: rotate(-90deg); }
+
+.briefing-content {
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+.brief-section h4 {
+  font-family: var(--font-head);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+.brief-section p, .brief-section li {
+  font-size: 13px;
+  color: var(--text-sec);
+  line-height: 1.6;
+}
+.brief-section ul {
+  list-style: none;
+  padding: 0;
+}
+.brief-section li::before {
+  content: "\2022";
+  color: var(--gold);
+  margin-right: 6px;
+}
+
+/* Transcript area */
+.transcript-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+.transcript-table {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.transcript-row {
+  display: grid;
+  grid-template-columns: 90px 60px 1fr;
+  gap: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  border-radius: 4px;
+  animation: fadeRow .25s ease;
+}
+@keyframes fadeRow {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.transcript-row .role-label {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 8px 12px;
+  border-left: 3px solid transparent;
+}
+.transcript-row .ts {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 8px 4px;
+}
+.transcript-row .content {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 8px 12px;
+  color: var(--text);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.transcript-row.officer .role-label  { color: var(--officer); border-left-color: var(--officer); }
+.transcript-row.suspect .role-label  { color: var(--suspect); border-left-color: var(--suspect); }
+.transcript-row.system .role-label   { color: var(--system-c); border-left-color: var(--system-c); }
+.transcript-row.witness .role-label  { color: var(--green); border-left-color: var(--green); }
+.transcript-row.pit .role-label      { color: var(--gold); border-left-color: var(--gold); }
+.transcript-row.officer  { background: rgba(59,130,246,.04); }
+.transcript-row.suspect  { background: rgba(239,68,68,.04); }
+.transcript-row.system   { background: rgba(139,92,246,.04); }
+.transcript-row.witness  { background: rgba(34,197,94,.04); }
+.transcript-row.pit      { background: rgba(201,168,76,.04); }
+
+/* Mode badge on cards */
+.card-mode-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--gold-dim);
+  color: var(--gold);
+  width: fit-content;
+}
+
+/* Loading spinner for scenario fetch */
+.loading-scenarios {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-sec);
+}
+.loading-scenarios .spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  margin: 0 auto 12px;
+}
+
+/* Typing indicator */
+.typing-row {
+  display: none;
+}
+.typing-row.visible {
+  display: grid;
+  grid-template-columns: 90px 60px 1fr;
+}
+.typing-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 8px 12px;
+}
+.typing-dots span {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--suspect);
+  animation: dotBounce 1.4s infinite ease-in-out;
+}
+.typing-dots span:nth-child(2) { animation-delay: .2s; }
+.typing-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes dotBounce {
+  0%, 80%, 100% { transform: scale(.6); opacity: .4; }
+  40%           { transform: scale(1); opacity: 1; }
+}
+
+/* Input area */
+.input-area {
+  padding: 12px 20px 16px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+}
+.quick-chips {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.chip {
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text-sec);
+  font-size: 12px;
+  font-weight: 500;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.chip:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: var(--gold-dim);
+}
+.input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.input-row textarea {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  resize: none;
+  min-height: 44px;
+  max-height: 120px;
+  outline: none;
+  line-height: 1.5;
+  transition: border-color .15s;
+}
+.input-row textarea:focus { border-color: var(--gold); }
+.input-row textarea::placeholder { color: var(--text-muted); }
+
+.send-btn {
+  width: 44px; height: 44px;
+  background: var(--gold);
+  border: none;
+  border-radius: 10px;
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.send-btn:hover { background: #d4b45a; }
+.send-btn:disabled { opacity: .35; cursor: not-allowed; }
+.send-btn svg { width: 20px; height: 20px; }
+
+/* ── Mic button ───────────────────────────────────────────────────────── */
+.mic-btn {
+  width: 44px; height: 44px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-sec);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.mic-btn:hover { border-color: var(--gold); color: var(--gold); }
+.mic-btn:disabled { opacity: .35; cursor: not-allowed; }
+.mic-btn svg { width: 20px; height: 20px; }
+
+.mic-btn.listening {
+  background: var(--gold-dim);
+  border-color: var(--gold);
+  color: var(--gold);
+  animation: mic-pulse 2s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(201,168,76,0); }
+}
+
+.mic-btn.transcribing {
+  background: var(--gold);
+  color: var(--bg);
+  border-color: var(--gold);
+}
+
+/* ── TTS toggle + voice status ────────────────────────────────────────── */
+.tts-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-sec);
+  cursor: pointer;
+}
+.tts-toggle input[type="checkbox"] {
+  accent-color: var(--gold);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.voice-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.voice-status .status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+}
+.voice-status .status-dot.online { background: var(--green); }
+
+/* End interview bar */
+.end-bar {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  padding: 0 20px;
+  margin-bottom: 8px;
+}
+.end-btn {
+  padding: 7px 20px;
+  border: 1px solid rgba(239,68,68,.3);
+  border-radius: 8px;
+  background: rgba(239,68,68,.08);
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  transition: all .15s;
+}
+.end-btn:hover { background: rgba(239,68,68,.18); border-color: var(--red); }
+
+.download-btn {
+  padding: 7px 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-sec);
+  font-size: 12px;
+  font-weight: 600;
+  transition: all .15s;
+}
+.download-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── Assessment overlay ─────────────────────────────────────────────── */
+.assessment-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(11,17,32,.85);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+.assessment-overlay.visible { display: flex; }
+
+.assessment-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 700px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.assessment-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.assessment-header h2 {
+  font-family: var(--font-head);
+  font-size: 20px;
+  color: var(--gold);
+}
+.close-assess-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-sec);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  transition: all .15s;
+}
+.close-assess-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+.assessment-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+.assessment-body .loading-assess {
+  text-align: center;
+  color: var(--text-sec);
+  padding: 40px;
+}
+.assessment-body .loading-assess .spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.assessment-text {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+.assessment-text h3, .assessment-text strong {
+  color: var(--gold);
+}
+
+.assessment-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.new-scenario-btn {
+  padding: 10px 24px;
+  background: var(--gold);
+  color: var(--bg);
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  transition: background .15s;
+}
+.new-scenario-btn:hover { background: #d4b45a; }
+
+/* ── Reduced motion ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Mobile responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .brand { font-size: 40px; }
+  .cards-grid { grid-template-columns: 1fr; }
+  .interview-header { padding: 8px 12px; gap: 8px; }
+  .ih-title { font-size: 14px; }
+  .peace-pills { order: 10; width: 100%; justify-content: center; }
+  .peace-pill { padding: 3px 8px; font-size: 10px; }
+  .transcript-row {
+    grid-template-columns: 70px 50px 1fr;
+  }
+  .transcript-row .role-label { font-size: 10px; padding: 6px 8px; }
+  .transcript-row .ts { font-size: 10px; }
+  .transcript-row .content { font-size: 12px; padding: 6px 8px; }
+  .briefing-content { grid-template-columns: 1fr; }
+  .input-area { padding: 8px 12px 12px; }
+  .quick-chips { gap: 4px; }
+  .chip { font-size: 11px; padding: 4px 10px; }
+}
+
+@media (max-width: 480px) {
+  .brand { font-size: 32px; }
+  .diff-tab { padding: 6px 14px; font-size: 12px; }
+  .card-body { padding: 14px; }
+  .transcript-row { grid-template-columns: 60px 45px 1fr; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   FLASHCARD OVERLAY
+   ══════════════════════════════════════════════════════════════════════ */
+.flashcard-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(11,17,32,.92);
+  z-index: 600;
+  flex-direction: column;
+  align-items: center;
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+}
+.flashcard-overlay.visible { display: flex; }
+
+.fc-header {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 12px;
+  gap: 12px;
+}
+.fc-header h2 {
+  font-family: var(--font-head);
+  font-size: 20px;
+  color: var(--gold);
+  white-space: nowrap;
+}
+.fc-progress {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-sec);
+}
+.fc-seen {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+.fc-close-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-sec);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.fc-close-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+/* Topic filter pills */
+.fc-topic-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding: 0 24px 12px;
+  max-width: 760px;
+  width: 100%;
+}
+.fc-topic-pill {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.fc-topic-pill:hover { color: var(--text); border-color: var(--text-muted); }
+.fc-topic-pill.active {
+  background: var(--gold-dim);
+  color: var(--gold);
+  border-color: var(--gold-glow);
+}
+
+/* Card container */
+.flashcard-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 700px;
+  padding: 0 24px;
+  min-height: 0;
+}
+
+/* 3D flip card */
+.flashcard {
+  width: 100%;
+  max-height: 460px;
+  aspect-ratio: auto;
+  perspective: 1200px;
+  cursor: pointer;
+}
+.flashcard-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  max-height: 460px;
+  transition: transform 0.6s cubic-bezier(.4,.2,.2,1);
+  transform-style: preserve-3d;
+}
+.flashcard-inner.flipped { transform: rotateY(180deg); }
+
+.flashcard-front, .flashcard-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Front face */
+.flashcard-front {
+  background: var(--panel);
+}
+.fc-front-stripe {
+  height: 5px;
+  flex-shrink: 0;
+}
+.fc-front-stripe.beginner    { background: var(--green); }
+.fc-front-stripe.intermediate{ background: var(--amber); }
+.fc-front-stripe.advanced    { background: var(--red); }
+
+.fc-front-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 28px;
+  gap: 20px;
+  text-align: center;
+}
+.fc-front-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fc-topic-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: var(--gold-dim);
+  color: var(--gold);
+}
+.fc-front-question {
+  font-family: var(--font-head);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.5;
+  max-width: 560px;
+}
+.fc-reveal-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: .3px;
+}
+.fc-reveal-hint kbd {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--surface);
+  color: var(--text-sec);
+  margin: 0 2px;
+}
+
+/* Back face */
+.flashcard-back {
+  background: var(--panel);
+  transform: rotateY(180deg);
+}
+.fc-back-header {
+  padding: 16px 24px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.fc-back-header .fc-check-icon {
+  color: var(--green);
+  font-size: 16px;
+}
+.fc-back-header span {
+  font-family: var(--font-head);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+}
+.fc-back-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+.fc-back-answer {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text);
+}
+.fc-back-question-ref {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-style: italic;
+}
+
+/* Bottom nav bar */
+.fc-nav {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px 20px;
+  gap: 12px;
+}
+.fc-nav-btn {
+  padding: 8px 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-sec);
+  font-size: 13px;
+  font-weight: 600;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fc-nav-btn:hover { border-color: var(--gold); color: var(--gold); }
+.fc-nav-center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.fc-shuffle-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--gold-dim);
+  border-radius: 8px;
+  background: var(--gold-dim);
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 600;
+  transition: all .15s;
+}
+.fc-shuffle-btn:hover { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .fc-header { padding: 16px 16px 8px; }
+  .fc-header h2 { font-size: 16px; }
+  .fc-topic-bar { padding: 0 16px 8px; }
+  .flashcard-container { padding: 0 16px; }
+  .fc-front-body { padding: 24px 20px; }
+  .fc-front-question { font-size: 16px; }
+  .fc-back-body { padding: 20px 16px; }
+  .fc-nav { padding: 12px 16px 16px; flex-wrap: wrap; justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     CONNECTION BANNER
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="conn-banner" id="connBanner">
+  <span class="dot"></span>
+  <span>Cannot reach model server. Check that the model container is running.</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SCREEN 1 — SCENARIO SELECTION
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="screen active" id="selectScreen">
+  <div class="select-header">
+    <div class="brand">PIT</div>
+    <div class="brand-sub">Police Interview Trainer &mdash; 523 Scenarios</div>
+    <div class="mode-bar" id="modeBar">
+      <button class="mode-tab active" data-mode="all">All <span class="mode-count">523</span></button>
+      <button class="mode-tab" data-mode="suspect_roleplay">Suspect Interview <span class="mode-count">200</span></button>
+      <button class="mode-tab" data-mode="witness_roleplay">Witness Interview <span class="mode-count">60</span></button>
+      <button class="mode-tab" data-mode="peace_knowledge">PEACE Knowledge <span class="mode-count">80</span></button>
+      <button class="mode-tab" data-mode="assessment">Assessment <span class="mode-count">120</span></button>
+      <button class="mode-tab" data-mode="scenario_presentation">Scenario Briefing <span class="mode-count">33</span></button>
+      <button class="mode-tab" data-mode="special_procedures">Special Procedures <span class="mode-count">30</span></button>
+    </div>
+    <div class="diff-bar">
+      <button class="diff-tab active" data-diff="all">All</button>
+      <button class="diff-tab" data-diff="beginner">Beginner</button>
+      <button class="diff-tab" data-diff="intermediate">Intermediate</button>
+      <button class="diff-tab" data-diff="advanced">Advanced</button>
+    </div>
+  </div>
+
+  <div class="cards-area">
+    <div class="cards-grid" id="cardsGrid">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <div class="select-footer">
+    PIT &mdash; Police Interview Trainer &bull; PIP Level 1 Training Tool &bull; For training purposes only
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SCREEN 2 — INTERVIEW ROOM
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="interviewScreen">
+  <div class="interview-header">
+    <div class="ih-left">
+      <button class="back-btn" id="backBtn">&larr; Back</button>
+      <div class="ih-title" id="ihTitle">Shoplifting Interview</div>
+    </div>
+    <div class="peace-pills" id="peacePills">
+      <span class="peace-pill active" data-phase="P">P</span>
+      <span class="peace-pill" data-phase="EE">E&amp;E</span>
+      <span class="peace-pill" data-phase="A">A</span>
+      <span class="peace-pill" data-phase="C">C</span>
+      <span class="peace-pill" data-phase="E">E</span>
+    </div>
+    <div class="ih-right">
+      <div class="voice-status" id="voiceStatus">
+        <span class="status-dot" id="voiceDot"></span>
+        <span id="voiceLabel">Voice</span>
+      </div>
+      <div class="rec-dot"><span class="dot"></span>REC</div>
+      <div class="timer" id="timer">00:00</div>
+    </div>
+  </div>
+
+  <div class="interview-body">
+    <!-- Briefing toggle -->
+    <button class="briefing-toggle" id="briefingToggle">
+      <span>Interview Briefing</span>
+      <span class="chevron">&#9660;</span>
+    </button>
+    <div class="briefing-panel" id="briefingPanel">
+      <div class="briefing-content" id="briefingContent">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- Transcript -->
+    <div class="transcript-area" id="transcriptArea">
+      <div class="transcript-table" id="transcriptTable">
+        <!-- Rows added by JS -->
+      </div>
+      <div class="typing-row" id="typingRow">
+        <div class="role-label" style="color:var(--suspect); border-left:3px solid var(--suspect); padding:8px 12px; font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.5px;">SUSPECT</div>
+        <div class="ts" style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted); padding:8px 4px;"></div>
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="end-bar">
+      <button class="end-btn" id="endBtn">End Interview &amp; Get Assessment</button>
+      <button class="download-btn" id="downloadBtn">Download Transcript</button>
+      <label class="tts-toggle">
+        <input type="checkbox" id="ttsEnabled">
+        <span id="ttsLabel">Suspect Voice</span>
+      </label>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div class="quick-chips">
+        <button class="chip" data-insert="I am cautioning you. You do not have to say anything. But it may harm your defence if you do not mention when questioned something which you later rely on in court. Anything you do say may be given in evidence. Do you understand the caution?">Caution</button>
+        <button class="chip" data-insert="Can you tell me in your own words what happened?">Open Question</button>
+        <button class="chip" data-insert="I am now concluding this interview. Is there anything else you wish to say?">Close Interview</button>
+        <button class="chip" data-insert="For the purposes of the recording, I am showing you exhibit ">Show Exhibit</button>
+      </div>
+      <div class="input-row">
+        <textarea id="userInput" rows="1" placeholder="Type your interview question..."></textarea>
+        <button class="mic-btn" id="micBtn" disabled title="Toggle microphone (voice-to-text)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </button>
+        <button class="send-btn" id="sendBtn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     ASSESSMENT OVERLAY
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="assessment-overlay" id="assessOverlay">
+  <div class="assessment-card">
+    <div class="assessment-header">
+      <h2>Interview Assessment</h2>
+      <button class="close-assess-btn" id="closeAssessBtn">Close</button>
+    </div>
+    <div class="assessment-body" id="assessBody">
+      <div class="loading-assess" id="assessLoading">
+        <div class="spinner"></div>
+        <div>Generating assessment against PIP Level 1 standards...</div>
+      </div>
+      <div class="assessment-text" id="assessText"></div>
+    </div>
+    <div class="assessment-footer">
+      <button class="download-btn" id="downloadAssessBtn">Download Assessment</button>
+      <button class="new-scenario-btn" id="newScenarioBtn">New Scenario</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     FLASHCARD OVERLAY
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="flashcard-overlay" id="flashcardOverlay">
+  <div class="fc-header">
+    <h2>PEACE Knowledge</h2>
+    <span class="fc-progress" id="fcProgress">1 of 80</span>
+    <span class="fc-seen" id="fcSeen"></span>
+    <button class="fc-close-btn" id="fcCloseBtn">Close &times;</button>
+  </div>
+  <div class="fc-topic-bar" id="fcTopicBar">
+    <!-- Topic pills populated by JS -->
+  </div>
+  <div class="flashcard-container">
+    <div class="flashcard" id="flashcard" title="Click to flip">
+      <div class="flashcard-inner" id="flashcardInner">
+        <div class="flashcard-front">
+          <div class="fc-front-stripe" id="fcStripe"></div>
+          <div class="fc-front-body">
+            <div class="fc-front-meta">
+              <span class="fc-topic-badge" id="fcTopicBadge">Caution</span>
+              <span class="diff-badge" id="fcDiffBadge">beginner</span>
+            </div>
+            <div class="fc-front-question" id="fcQuestion">Loading...</div>
+            <div class="fc-reveal-hint">Click to reveal &middot; <kbd>Space</kbd></div>
+          </div>
+        </div>
+        <div class="flashcard-back">
+          <div class="fc-back-header">
+            <span class="fc-check-icon">&#10003;</span>
+            <span>Answer</span>
+          </div>
+          <div class="fc-back-body">
+            <div class="fc-back-answer" id="fcAnswer">...</div>
+            <div class="fc-back-question-ref" id="fcQuestionRef"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="fc-nav">
+    <button class="fc-nav-btn" id="fcPrevBtn">&larr; Prev</button>
+    <div class="fc-nav-center">
+      <button class="fc-shuffle-btn" id="fcShuffleBtn">Shuffle</button>
+    </div>
+    <button class="fc-nav-btn" id="fcNextBtn">Next &rarr;</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     APPLICATION LOGIC
+     ═══════════════════════════════════════════════════════════════════ -->
+<script>
+"use strict";
+
+// ── Configuration ───────────────────────────────────────────────────
+const API_BASE = "";
+const MAX_HISTORY = 20;
+const API_TEMPERATURE = 0.7;
+
+// ── Scenario data (loaded from scenarios.json) ─────────────────────
+let SCENARIOS = [];
+let scenariosLoaded = false;
+
+// ── State ───────────────────────────────────────────────────────────
+let currentScenario = null;
+let currentMode = null;         // active mode during interview
+let conversationHistory = [];   // {role, content}
+let transcriptEntries = [];     // {role, time, content}
+let timerInterval = null;
+let startTime = null;
+let sending = false;
+let assessmentText = "";
+let activeFilterMode = "all";
+let activeFilterDiff = "all";
+
+// Voice state
+let micActive = false;
+let audioContext = null;
+let mediaStream = null;
+let workletNode = null;
+let sttSocket = null;
+let voiceAvailable = false;
+let VOICE_LIST = { male: [], female: [] };
+let currentVoiceId = null;
+
+// ── DOM refs ────────────────────────────────────────────────────────
+const $  = (s, p) => (p || document).querySelector(s);
+const $$ = (s, p) => [...(p || document).querySelectorAll(s)];
+
+const selectScreen    = $("#selectScreen");
+const interviewScreen = $("#interviewScreen");
+const cardsGrid       = $("#cardsGrid");
+const connBanner      = $("#connBanner");
+const ihTitle         = $("#ihTitle");
+const peacePills      = $$(".peace-pill");
+const timerEl         = $("#timer");
+const briefingToggle  = $("#briefingToggle");
+const briefingPanel   = $("#briefingPanel");
+const briefingContent = $("#briefingContent");
+const transcriptArea  = $("#transcriptArea");
+const transcriptTable = $("#transcriptTable");
+const typingRow       = $("#typingRow");
+const userInput       = $("#userInput");
+const sendBtn         = $("#sendBtn");
+const micBtn          = $("#micBtn");
+const ttsEnabled      = $("#ttsEnabled");
+const ttsLabel        = $("#ttsLabel");
+const voiceDot        = $("#voiceDot");
+const voiceLabel      = $("#voiceLabel");
+const endBtn          = $("#endBtn");
+const downloadBtn     = $("#downloadBtn");
+const backBtn         = $("#backBtn");
+const assessOverlay   = $("#assessOverlay");
+const assessBody      = $("#assessBody");
+const assessLoading   = $("#assessLoading");
+const assessText      = $("#assessText");
+const closeAssessBtn  = $("#closeAssessBtn");
+const downloadAssessBtn = $("#downloadAssessBtn");
+const newScenarioBtn  = $("#newScenarioBtn");
+
+// ── Health checks ──────────────────────────────────────────────────
+async function healthCheck() {
+  try {
+    const r = await fetch(`${API_BASE}/v1/models`, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) { connBanner.classList.remove("visible"); return true; }
+  } catch (e) { /* fall through */ }
+  connBanner.classList.add("visible");
+  return false;
+}
+healthCheck();
+setInterval(healthCheck, 30000);
+
+async function voiceHealthCheck() {
+  try {
+    const r = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      const data = await r.json();
+      voiceAvailable = data.stt_loaded && data.tts_loaded;
+    } else {
+      voiceAvailable = false;
+    }
+  } catch {
+    voiceAvailable = false;
+  }
+  micBtn.disabled = !voiceAvailable;
+  voiceDot.classList.toggle("online", voiceAvailable);
+  voiceLabel.textContent = voiceAvailable ? "Voice" : "Voice N/A";
+}
+voiceHealthCheck();
+setInterval(voiceHealthCheck, 30000);
+
+async function loadVoiceList() {
+  try {
+    const r = await fetch(`${API_BASE}/api/voices`, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      VOICE_LIST = await r.json();
+      console.log(`[Voice] Loaded ${VOICE_LIST.male.length} male + ${VOICE_LIST.female.length} female voices`);
+    }
+  } catch { /* voice cloning unavailable — TTS will use default voice */ }
+}
+loadVoiceList();
+
+// ── Mode labels ─────────────────────────────────────────────────────
+const MODE_LABELS = {
+  suspect_roleplay: "Suspect Interview",
+  witness_roleplay: "Witness Interview",
+  peace_knowledge: "PEACE Knowledge",
+  assessment: "Assessment",
+  scenario_presentation: "Scenario Briefing",
+  special_procedures: "Special Procedures",
+};
+
+const MODE_BUTTON_LABELS = {
+  suspect_roleplay: "Begin Interview",
+  witness_roleplay: "Begin Interview",
+  peace_knowledge: "View Flashcard",
+  assessment: "Start Assessment",
+  scenario_presentation: "Get Briefing",
+  special_procedures: "View Flashcard",
+};
+
+// ── Max tokens per mode ─────────────────────────────────────────────
+function getMaxTokens(mode) {
+  switch (mode) {
+    case "suspect_roleplay":
+    case "witness_roleplay": return 150;   // suspects give 1-3 sentences
+    case "peace_knowledge":
+    case "special_procedures": return 1024;
+    case "scenario_presentation": return 1024;
+    case "assessment": return 1024;
+    default: return 512;
+  }
+}
+
+// ── Load scenarios from server ──────────────────────────────────────
+async function loadScenarios() {
+  cardsGrid.innerHTML = '<div class="loading-scenarios"><div class="spinner"></div><div>Loading scenarios...</div></div>';
+  try {
+    const r = await fetch(`${API_BASE}/scenarios.json`, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    SCENARIOS = data.scenarios || [];
+    scenariosLoaded = true;
+    // Update mode tab counts from actual data
+    updateModeTabCounts();
+    renderCards();
+    // Try to restore session after scenarios load
+    restoreSession();
+  } catch (e) {
+    cardsGrid.innerHTML = `<div class="loading-scenarios"><div>Failed to load scenarios: ${e.message}</div></div>`;
+  }
+}
+loadScenarios();
+
+function updateModeTabCounts() {
+  const counts = {};
+  SCENARIOS.forEach(s => { counts[s.mode] = (counts[s.mode] || 0) + 1; });
+  $$(".mode-tab").forEach(tab => {
+    const mode = tab.dataset.mode;
+    const countEl = tab.querySelector(".mode-count");
+    if (countEl) {
+      countEl.textContent = mode === "all" ? SCENARIOS.length : (counts[mode] || 0);
+    }
+  });
+}
+
+// ── Card renderer (mode-specific) ──────────────────────────────────
+function renderCardHTML(s) {
+  const btnLabel = MODE_BUTTON_LABELS[s.mode] || "Begin";
+  const modeLabel = MODE_LABELS[s.mode] || s.mode;
+
+  let bodyContent = "";
+
+  if (s.mode === "suspect_roleplay") {
+    bodyContent = `
+      <div class="card-top">
+        <div class="card-offence">${escapeHtml(s.offence)}</div>
+        <span class="diff-badge ${s.difficulty}">${s.difficulty}</span>
+      </div>
+      <div class="card-mode-badge">${modeLabel}</div>
+      <div class="card-suspect">
+        <strong>${escapeHtml(s.suspectName)}</strong>, ${s.suspectAge}yrs, ${s.suspectGender}
+      </div>
+      <div class="card-behaviour">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        ${escapeHtml(s.behaviourLabel)}
+      </div>
+      <div class="card-desc">${escapeHtml(s.description)}</div>`;
+  } else if (s.mode === "witness_roleplay") {
+    bodyContent = `
+      <div class="card-top">
+        <div class="card-offence">${escapeHtml(s.offence)}</div>
+        <span class="diff-badge ${s.difficulty}">${s.difficulty}</span>
+      </div>
+      <div class="card-mode-badge">${modeLabel}</div>
+      <div class="card-suspect">
+        <strong>${escapeHtml(s.witnessName)}</strong> &mdash; ${escapeHtml(s.witnessTypeLabel)}
+      </div>
+      <div class="card-behaviour">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        ${escapeHtml(s.demeanour)}
+      </div>
+      <div class="card-desc">${escapeHtml(s.description)}</div>`;
+  } else if (s.mode === "peace_knowledge" || s.mode === "special_procedures") {
+    bodyContent = `
+      <div class="card-top">
+        <div class="card-offence">${escapeHtml(s.topicLabel)}</div>
+        <span class="diff-badge ${s.difficulty}">${s.difficulty}</span>
+      </div>
+      <div class="card-mode-badge">${modeLabel}</div>
+      <div class="card-desc">${escapeHtml(s.title)}</div>`;
+  } else if (s.mode === "assessment") {
+    bodyContent = `
+      <div class="card-top">
+        <div class="card-offence">${escapeHtml(s.offence)}</div>
+        <span class="diff-badge ${s.difficulty}">${s.difficulty}</span>
+      </div>
+      <div class="card-mode-badge">${modeLabel}</div>
+      <div class="card-desc">${escapeHtml(s.title)}</div>`;
+  } else if (s.mode === "scenario_presentation") {
+    bodyContent = `
+      <div class="card-top">
+        <div class="card-offence">${escapeHtml(s.offence)}</div>
+        <span class="diff-badge ${s.difficulty}">${s.difficulty}</span>
+      </div>
+      <div class="card-mode-badge">${modeLabel}</div>
+      <div class="card-desc">${escapeHtml(s.description)}</div>`;
+  }
+
+  return `
+    <div class="card" data-diff="${s.difficulty}" data-mode="${s.mode}" data-id="${s.id}">
+      <div class="card-stripe ${s.difficulty}"></div>
+      <div class="card-body">
+        ${bodyContent}
+        <button class="card-btn" onclick="startInterview('${s.id}')">${btnLabel}</button>
+      </div>
+    </div>`;
+}
+
+function renderCards() {
+  cardsGrid.innerHTML = SCENARIOS.map(s => renderCardHTML(s)).join("");
+  filterCards();
+}
+
+// ── Combined filter (mode + difficulty) ─────────────────────────────
+function filterCards() {
+  $$(".card", cardsGrid).forEach(card => {
+    const matchMode = activeFilterMode === "all" || card.dataset.mode === activeFilterMode;
+    const matchDiff = activeFilterDiff === "all" || card.dataset.diff === activeFilterDiff;
+    card.classList.toggle("hidden", !(matchMode && matchDiff));
+  });
+}
+
+// Mode tabs
+$$(".mode-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    $$(".mode-tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    activeFilterMode = tab.dataset.mode;
+    filterCards();
+  });
+});
+
+// Difficulty tabs
+$$(".diff-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    $$(".diff-tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    activeFilterDiff = tab.dataset.diff;
+    filterCards();
+  });
+});
+
+// ── System prompt builders (match scripts/pit_sft/prompts.py exactly) ────
+
+function buildSuspectPrompt(s) {
+  let prompt = `You are PIT (Police Interview Trainer), simulating a suspect in a police interview training exercise.\n\n`;
+  prompt += `SCENARIO: ${s.whatHappened}\n\n`;
+  prompt += `YOUR CHARACTER: ${s.suspectName}, ${s.suspectAge} years old, ${s.suspectGender}.\n`;
+  prompt += `OFFENCE: ${s.offenceDesc || s.offence} (${s.statute})\n`;
+  prompt += `BEHAVIOUR: ${s.behaviour}`;
+  if (s.solicitor) prompt += `\nYour solicitor ${s.solicitor} is present.`;
+  prompt += `\n\nINSTRUCTIONS:\n`;
+  prompt += `- Stay in character as ${s.suspectName} throughout the entire interview\n`;
+  prompt += `- ${s.behaviourDetail}\n`;
+  prompt += `- Use natural everyday speech with contractions and filler words\n`;
+  prompt += `- Keep responses to 1-3 sentences -- suspects do not give speeches\n`;
+  prompt += `- React realistically to the caution and to evidence being presented\n`;
+  prompt += `- Do NOT break character or offer training feedback during the interview\n`;
+  prompt += `- Do NOT analyse the interview or evaluate technique -- just respond as ${s.suspectName}\n`;
+  prompt += `- Always reply with spoken dialogue only`;
+  return prompt;
+}
+
+function buildWitnessPrompt(s) {
+  return `You are PIT (Police Interview Trainer), simulating a witness in a police interview training exercise.\n\n`
+    + `SCENARIO: ${s.whatHappened}\n\n`
+    + `YOUR CHARACTER: ${s.witnessName}. You are a ${s.witnessTypeLabel.toLowerCase()}.\n`
+    + `Your demeanour: ${s.demeanour}\n`
+    + `Your recall: ${s.recallQuality}\n\n`
+    + `INSTRUCTIONS:\n`
+    + `- Stay in character as ${s.witnessName} throughout\n`
+    + `- You are a witness, not a suspect. No caution is needed for you\n`
+    + `- Respond naturally with everyday speech\n`
+    + `- Provide information gradually, not all at once\n`
+    + `- Respond well to open questions and rapport building\n`
+    + `- If asked leading questions, you may agree even if not fully accurate\n`
+    + `- Keep responses natural, 1-4 sentences typically\n`
+    + `- Do NOT break character or offer training feedback\n`
+    + `- Do NOT analyse the interview or evaluate technique -- just respond as ${s.witnessName}\n`
+    + `- Always reply with spoken dialogue only`;
+}
+
+const KNOWLEDGE_SYSTEM_PROMPT = `You are PIT (Police Interview Trainer), a specialist in police interview procedures and the PEACE framework. You train officers to PIP Level 1 standard.\n\nAnswer questions about interview procedures accurately and practically. Reference PACE Codes of Practice, the PEACE model, and PIP Level 1 requirements.\n\nGive clear, actionable guidance. Use natural conversational speech suitable for voice delivery. Avoid excessive bullet points or overly formal language.`;
+
+const SCENARIO_SYSTEM_PROMPT = `You are PIT (Police Interview Trainer). Present a realistic training scenario for a police interview exercise.\n\nInclude all the information an officer would need to plan their interview: offence details, suspect information, available evidence, witness summary, and any special considerations.\n\nMake it realistic and detailed. Use natural speech suitable for voice delivery.`;
+
+const SPECIAL_PROCEDURE_SYSTEM_PROMPT = `You are PIT (Police Interview Trainer), demonstrating special interview procedures.\n\nGuide the trainee through the correct process step by step, using natural conversational language suitable for voice delivery. Reference the relevant legislation and PACE Codes of Practice where appropriate.`;
+
+const INLINE_ASSESSMENT_SYSTEM_PROMPT = `You are PIT (Police Interview Trainer), an expert assessor evaluating police interview technique against PIP Level 1 standards.\n\nAssess the interview transcript against these criteria:\n1. PEACE Framework Adherence -- did the officer follow Planning, Engage & Explain, Account/Clarification/Challenge, Closure, Evaluation?\n2. Questioning Technique -- use of open questions, avoidance of leading questions, 5WH coverage\n3. Caution Delivery -- accurate wording, correct timing, understanding check\n4. Legal Compliance -- PACE Code C, Code E, right to legal advice, appropriate adult\n5. Rapport Building -- professional manner, active listening, appropriate formality\n6. Challenge Technique -- evidence presentation, handling inconsistencies, special warnings\n7. Professional Conduct -- fairness, objectivity, demeanour\n\nGrade: Outstanding, Good, Satisfactory, or Unsatisfactory.\nGive specific feedback on each PEACE phase with examples from the transcript.\nUse a constructive, professional tone.`;
+
+function buildSystemPrompt(s) {
+  const mode = s.mode;
+  if (mode === "suspect_roleplay") return buildSuspectPrompt(s);
+  if (mode === "witness_roleplay") return buildWitnessPrompt(s);
+  if (mode === "peace_knowledge") return KNOWLEDGE_SYSTEM_PROMPT;
+  if (mode === "assessment") return INLINE_ASSESSMENT_SYSTEM_PROMPT;
+  if (mode === "scenario_presentation") return SCENARIO_SYSTEM_PROMPT;
+  if (mode === "special_procedures") return SPECIAL_PROCEDURE_SYSTEM_PROMPT;
+  return buildSuspectPrompt(s); // fallback
+}
+
+// ── Helper: is roleplay mode? ──────────────────────────────────────
+function isRoleplayMode(mode) {
+  return mode === "suspect_roleplay" || mode === "witness_roleplay";
+}
+
+// ── Start interview ─────────────────────────────────────────────────
+function startInterview(id) {
+  currentScenario = SCENARIOS.find(s => s.id === id);
+  if (!currentScenario) return;
+
+  // Route peace_knowledge and special_procedures to flashcard overlay instead of chat
+  if (currentScenario.mode === "peace_knowledge" || currentScenario.mode === "special_procedures") {
+    openFlashcards(id, currentScenario.mode);
+    return;
+  }
+
+  currentMode = currentScenario.mode;
+
+  // Assign a random gender-matched voice for this interview
+  currentVoiceId = null;
+  if (currentMode === "suspect_roleplay" || currentMode === "witness_roleplay") {
+    const gender = currentMode === "witness_roleplay"
+      ? (currentScenario.witnessGender || "female")
+      : (currentScenario.suspectGender || "male");
+    const pool = VOICE_LIST[gender] || [];
+    if (pool.length > 0) {
+      currentVoiceId = pool[Math.floor(Math.random() * pool.length)];
+      console.log(`[Voice] Assigned voice: ${currentVoiceId} (${gender})`);
+    }
+  }
+
+  // Reset state
+  conversationHistory = [];
+  transcriptEntries = [];
+  sending = false;
+  assessmentText = "";
+
+  // Stop mic if active
+  if (micActive) stopListening();
+
+  // Switch screen
+  selectScreen.classList.remove("active");
+  interviewScreen.classList.add("active");
+
+  // Header
+  const headerTitle = _getHeaderTitle(currentScenario);
+  ihTitle.textContent = headerTitle;
+
+  // Show/hide PEACE pills (only for roleplay modes)
+  const peacePillsContainer = $("#peacePills");
+  peacePillsContainer.style.display = isRoleplayMode(currentMode) ? "flex" : "none";
+  if (isRoleplayMode(currentMode)) {
+    peacePills.forEach(p => { p.classList.remove("active", "completed"); });
+    peacePills[0].classList.add("active");
+  }
+
+  // Show/hide quick chips and briefing (only for roleplay modes)
+  const quickChips = $(".quick-chips");
+  quickChips.style.display = isRoleplayMode(currentMode) ? "flex" : "none";
+
+  // Briefing — only for roleplay
+  if (isRoleplayMode(currentMode)) {
+    renderBriefing();
+    briefingPanel.classList.remove("collapsed");
+    briefingToggle.classList.remove("collapsed");
+    briefingToggle.style.display = "";
+    briefingPanel.style.display = "";
+  } else {
+    briefingToggle.style.display = "none";
+    briefingPanel.style.display = "none";
+  }
+
+  // Update typing indicator label and colour
+  _updateTypingIndicator();
+
+  // Update TTS label
+  if (currentMode === "witness_roleplay") {
+    ttsLabel.textContent = "Witness Voice";
+  } else if (isRoleplayMode(currentMode)) {
+    ttsLabel.textContent = "Suspect Voice";
+  } else {
+    ttsLabel.textContent = "PIT Voice";
+  }
+
+  // Update input placeholder
+  if (currentMode === "assessment") {
+    userInput.placeholder = "Paste your interview transcript for assessment...";
+    userInput.style.minHeight = "100px";
+  } else if (isRoleplayMode(currentMode)) {
+    userInput.placeholder = "Type your interview question...";
+    userInput.style.minHeight = "44px";
+  } else {
+    userInput.placeholder = "Type your question...";
+    userInput.style.minHeight = "44px";
+  }
+
+  // Update end button text
+  if (isRoleplayMode(currentMode)) {
+    endBtn.textContent = "End Interview & Get Assessment";
+    endBtn.style.display = "";
+  } else {
+    endBtn.style.display = "none";
+  }
+
+  // Clear transcript
+  transcriptTable.innerHTML = "";
+  typingRow.classList.remove("visible");
+
+  // Timer
+  startTime = Date.now();
+  timerEl.textContent = "00:00";
+  clearInterval(timerInterval);
+  timerInterval = setInterval(updateTimer, 1000);
+
+  // Build system prompt
+  const sysPrompt = buildSystemPrompt(currentScenario);
+  conversationHistory.push({ role: "system", content: sysPrompt });
+
+  // Mode-specific initial behaviour
+  if (isRoleplayMode(currentMode)) {
+    addTranscriptRow("system", "INTERVIEW COMMENCED. Recording started.");
+  } else if (currentMode === "peace_knowledge" || currentMode === "special_procedures") {
+    // Auto-send the question as the first message
+    addTranscriptRow("system", "SESSION STARTED.");
+    _autoSendFirstMessage(currentScenario.title);
+  } else if (currentMode === "scenario_presentation") {
+    addTranscriptRow("system", "SESSION STARTED.");
+    const request = `Give me a training scenario for a ${currentScenario.offence.toLowerCase()} interview.`;
+    _autoSendFirstMessage(request);
+  } else if (currentMode === "assessment") {
+    addTranscriptRow("system", "ASSESSMENT SESSION STARTED. Paste your interview transcript below.");
+  }
+
+  // Auto-focus input
+  userInput.value = "";
+  userInput.focus();
+  sendBtn.disabled = true;
+
+  // Save session
+  saveSession();
+}
+
+function _getHeaderTitle(s) {
+  if (s.mode === "suspect_roleplay") return `${s.offence} \u2014 ${s.suspectName}`;
+  if (s.mode === "witness_roleplay") return `${s.offence} \u2014 ${s.witnessName}`;
+  if (s.mode === "peace_knowledge") return `PEACE Knowledge \u2014 ${s.topicLabel}`;
+  if (s.mode === "assessment") return `Assessment \u2014 ${s.offence}`;
+  if (s.mode === "scenario_presentation") return `Scenario Briefing \u2014 ${s.offence}`;
+  if (s.mode === "special_procedures") return `Special Procedures \u2014 ${s.topicLabel}`;
+  return s.offence || "PIT Session";
+}
+
+function _updateTypingIndicator() {
+  const typingLabel = typingRow.querySelector(".role-label");
+  const typingDots = typingRow.querySelectorAll(".typing-dots span");
+  if (currentMode === "witness_roleplay") {
+    typingLabel.textContent = "WITNESS";
+    typingLabel.style.color = "var(--green)";
+    typingLabel.style.borderLeftColor = "var(--green)";
+    typingDots.forEach(d => d.style.background = "var(--green)");
+  } else if (isRoleplayMode(currentMode)) {
+    typingLabel.textContent = "SUSPECT";
+    typingLabel.style.color = "var(--suspect)";
+    typingLabel.style.borderLeftColor = "var(--suspect)";
+    typingDots.forEach(d => d.style.background = "var(--suspect)");
+  } else {
+    typingLabel.textContent = "PIT";
+    typingLabel.style.color = "var(--gold)";
+    typingLabel.style.borderLeftColor = "var(--gold)";
+    typingDots.forEach(d => d.style.background = "var(--gold)");
+  }
+}
+
+async function _autoSendFirstMessage(text) {
+  // Small delay so UI renders first
+  await new Promise(r => setTimeout(r, 100));
+  userInput.value = text;
+  userInput.dispatchEvent(new Event("input"));
+  sendMessage();
+}
+
+// ── Render briefing ─────────────────────────────────────────────────
+function renderBriefing() {
+  const s = currentScenario;
+  if (s.mode === "suspect_roleplay") {
+    briefingContent.innerHTML = `
+      <div class="brief-section">
+        <h4>Offence Summary</h4>
+        <p>${s.whatHappened}</p>
+      </div>
+      <div class="brief-section">
+        <h4>Suspect Details</h4>
+        <p><strong>${s.suspectName}</strong>, ${s.suspectAge}, ${s.suspectGender}</p>
+        <p>${s.suspectDetails || ""}</p>
+        ${s.solicitor ? `<p>Solicitor: <strong>${s.solicitor}</strong></p>` : '<p>No solicitor requested.</p>'}
+      </div>
+      <div class="brief-section">
+        <h4>Available Evidence</h4>
+        <ul>${(s.evidence || []).map(e => `<li>${e}</li>`).join("")}</ul>
+      </div>
+      <div class="brief-section">
+        <h4>Points to Prove</h4>
+        <ul>${(s.pointsToProve || []).map(p => `<li>${p}</li>`).join("")}</ul>
+      </div>
+    `;
+  } else if (s.mode === "witness_roleplay") {
+    briefingContent.innerHTML = `
+      <div class="brief-section">
+        <h4>Offence Summary</h4>
+        <p>${s.whatHappened}</p>
+      </div>
+      <div class="brief-section">
+        <h4>Witness Details</h4>
+        <p><strong>${s.witnessName}</strong> &mdash; ${s.witnessTypeLabel}</p>
+        <p>Demeanour: ${s.demeanour}</p>
+        <p>Recall quality: ${s.recallQuality}</p>
+      </div>
+      <div class="brief-section">
+        <h4>Available Evidence</h4>
+        <ul>${(s.evidence || []).map(e => `<li>${e}</li>`).join("")}</ul>
+      </div>
+    `;
+  }
+}
+
+// ── Briefing toggle ─────────────────────────────────────────────────
+briefingToggle.addEventListener("click", () => {
+  briefingPanel.classList.toggle("collapsed");
+  briefingToggle.classList.toggle("collapsed");
+});
+
+// ── Timer ───────────────────────────────────────────────────────────
+function updateTimer() {
+  if (!startTime) return;
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2, "0");
+  const sec = String(elapsed % 60).padStart(2, "0");
+  timerEl.textContent = `${m}:${sec}`;
+}
+
+// ── Transcript ──────────────────────────────────────────────────────
+function getTimestamp() {
+  if (!startTime) return "00:00";
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2, "0");
+  const sec = String(elapsed % 60).padStart(2, "0");
+  return `${m}:${sec}`;
+}
+
+function addTranscriptRow(role, content) {
+  const ts = getTimestamp();
+  transcriptEntries.push({ role, time: ts, content });
+
+  const roleLabels = { officer: "OFFICER", suspect: "SUSPECT", witness: "WITNESS", pit: "PIT", system: "SYSTEM" };
+  const row = document.createElement("div");
+  row.className = `transcript-row ${role}`;
+  row.innerHTML = `
+    <div class="role-label">${roleLabels[role] || role.toUpperCase()}</div>
+    <div class="ts">${ts}</div>
+    <div class="content">${escapeHtml(content)}</div>
+  `;
+  transcriptTable.appendChild(row);
+  scrollToBottom();
+}
+
+// Get the transcript role for the model response based on current mode
+function getResponseRole() {
+  if (currentMode === "suspect_roleplay") return "suspect";
+  if (currentMode === "witness_roleplay") return "witness";
+  return "pit";
+}
+
+function scrollToBottom() {
+  requestAnimationFrame(() => {
+    transcriptArea.scrollTop = transcriptArea.scrollHeight;
+  });
+}
+
+function escapeHtml(str) {
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// ── Input handling ──────────────────────────────────────────────────
+userInput.addEventListener("input", () => {
+  sendBtn.disabled = !userInput.value.trim() || sending;
+  // Auto-resize
+  userInput.style.height = "auto";
+  userInput.style.height = Math.min(userInput.scrollHeight, 120) + "px";
+});
+
+userInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    if (!sendBtn.disabled) sendMessage();
+  }
+});
+
+sendBtn.addEventListener("click", sendMessage);
+
+// Quick chips
+$$(".chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    userInput.value = chip.dataset.insert;
+    userInput.dispatchEvent(new Event("input"));
+    userInput.focus();
+  });
+});
+
+// ── Send message ────────────────────────────────────────────────────
+async function sendMessage() {
+  const text = userInput.value.trim();
+  if (!text || sending) return;
+
+  sending = true;
+  sendBtn.disabled = true;
+  userInput.value = "";
+  userInput.style.height = "auto";
+
+  // Add officer row
+  addTranscriptRow("officer", text);
+
+  // Update PEACE phase (roleplay modes only)
+  if (isRoleplayMode(currentMode)) updatePeacePhase();
+
+  // Add to conversation history
+  conversationHistory.push({ role: "user", content: text });
+
+  // Cap history
+  if (conversationHistory.length > MAX_HISTORY + 1) {
+    conversationHistory = [
+      conversationHistory[0],
+      ...conversationHistory.slice(-(MAX_HISTORY))
+    ];
+  }
+
+  // Show typing
+  typingRow.classList.add("visible");
+  scrollToBottom();
+
+  const maxTokens = getMaxTokens(currentMode);
+  const responseRole = getResponseRole();
+
+  try {
+    const response = await fetch(`${API_BASE}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "pit-sft",
+        messages: conversationHistory,
+        max_tokens: maxTokens,
+        temperature: API_TEMPERATURE,
+        top_p: 0.9
+      }),
+      signal: AbortSignal.timeout(180000)
+    });
+
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    const data = await response.json();
+    let reply = data.choices[0].message.content;
+
+    // Client-side cleanup
+    reply = cleanResponse(reply);
+
+    // Guard against blank responses
+    if (!reply) {
+      if (isRoleplayMode(currentMode)) {
+        reply = "*remains silent*";
+      } else {
+        reply = "I'm sorry, I wasn't able to generate a response. Please try again.";
+      }
+    }
+
+    // Add to history & transcript
+    conversationHistory.push({ role: "assistant", content: reply });
+    typingRow.classList.remove("visible");
+    addTranscriptRow(responseRole, reply);
+
+    // TTS — play voice if enabled
+    playSuspectVoice(reply);
+
+    connBanner.classList.remove("visible");
+  } catch (err) {
+    typingRow.classList.remove("visible");
+    addTranscriptRow("system", `Error: ${err.message}. Check the model server.`);
+    connBanner.classList.add("visible");
+  }
+
+  sending = false;
+  sendBtn.disabled = !userInput.value.trim();
+  saveSession();
+}
+
+// ── Response cleanup ────────────────────────────────────────────────
+function cleanResponse(text) {
+  if (!text) return "";
+  // Strip common special tokens
+  text = text.replace(/<\|[^|]*\|>/g, "");
+  text = text.replace(/<\/?s>/g, "");
+  text = text.replace(/\[INST\].*?\[\/INST\]/gs, "");
+  text = text.replace(/\[\/INST\]/g, "");
+  // Trim multi-turn artifacts
+  const turnMarker = text.search(/\b(user|officer|interviewer)\s*:/i);
+  if (turnMarker > 20) text = text.substring(0, turnMarker);
+  return text.trim();
+}
+
+// ── PEACE Phase Detection ───────────────────────────────────────────
+function updatePeacePhase() {
+  const officerTurns = transcriptEntries.filter(e => e.role === "officer");
+  const turnCount = officerTurns.length;
+  const allOfficerText = officerTurns.map(e => e.content).join(" ").toLowerCase();
+
+  let phase = "P"; // Planning (pre-interview)
+
+  // Heuristic detection based on turn count and keywords
+  const hasIntroduction = /my name is|i am (pc|dc|detective|officer)|for the (purpose|tape|recording)/i.test(allOfficerText);
+  const hasCaution = /you do not have to say anything|caution/i.test(allOfficerText);
+  const hasAccount = /tell me|what happened|can you explain|describe|your own words|walk me through/i.test(allOfficerText);
+  const hasChallenge = /evidence|cctv|witness|statement|fingerprint|recovered|found on|exhibit|inconsist|earlier you said/i.test(allOfficerText);
+  const hasClosure = /concluding|anything else|wish to (say|add)|closing|end.*(interview|recording)|is there anything/i.test(allOfficerText);
+
+  if (hasClosure && turnCount >= 4) {
+    phase = "C";
+  } else if (hasChallenge && turnCount >= 4) {
+    phase = "A";
+  } else if (hasAccount && turnCount >= 3) {
+    phase = "A";
+  } else if (hasCaution || (hasIntroduction && turnCount >= 2)) {
+    phase = "EE";
+  } else if (turnCount >= 1) {
+    phase = "EE";
+  }
+
+  // Map phase to pill index
+  const phaseMap = { P: 0, EE: 1, A: 2, C: 3, E: 4 };
+  const activeIdx = phaseMap[phase] || 0;
+
+  peacePills.forEach((pill, i) => {
+    pill.classList.remove("active", "completed");
+    if (i < activeIdx) pill.classList.add("completed");
+    if (i === activeIdx) pill.classList.add("active");
+  });
+}
+
+// ── Back button ─────────────────────────────────────────────────────
+backBtn.addEventListener("click", () => {
+  if (transcriptEntries.length > 1) {
+    if (!confirm("Leave this interview? Your progress will be saved in this session.")) return;
+  }
+  if (micActive) stopListening();
+  clearInterval(timerInterval);
+  interviewScreen.classList.remove("active");
+  selectScreen.classList.add("active");
+});
+
+// ── End Interview & Assessment ──────────────────────────────────────
+endBtn.addEventListener("click", async () => {
+  if (transcriptEntries.filter(e => e.role === "officer").length < 2) {
+    alert("Conduct at least a few turns before requesting an assessment.");
+    return;
+  }
+  if (!confirm("End the interview and receive your assessment?")) return;
+
+  // Stop mic if active
+  if (micActive) stopListening();
+
+  // Add closure to transcript
+  addTranscriptRow("system", "INTERVIEW CONCLUDED. Recording stopped.");
+  clearInterval(timerInterval);
+
+  // Mark Evaluation phase
+  peacePills.forEach(p => p.classList.remove("active", "completed"));
+  peacePills.forEach((p, i) => {
+    if (i < 4) p.classList.add("completed");
+    if (i === 4) p.classList.add("active");
+  });
+
+  // Show assessment overlay
+  assessOverlay.classList.add("visible");
+  assessLoading.style.display = "block";
+  assessText.innerHTML = "";
+  assessmentText = "";
+
+  // Build transcript text for assessment
+  const transcriptText = transcriptEntries
+    .map(e => `[${e.time}] ${e.role.toUpperCase()}: ${e.content}`)
+    .join("\n");
+
+  const ASSESSMENT_SYSTEM_PROMPT = INLINE_ASSESSMENT_SYSTEM_PROMPT;
+
+  try {
+    const response = await fetch(`${API_BASE}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "pit-sft",
+        messages: [
+          { role: "system", content: ASSESSMENT_SYSTEM_PROMPT },
+          { role: "user", content: `Please assess the following interview transcript:\n\n${transcriptText}` }
+        ],
+        max_tokens: 1024,
+        temperature: 0.4,
+        top_p: 0.9,
+        stop: ["<|start|>", "<|end|>"],
+        stop_token_ids: [200006, 200007],
+        repetition_penalty: 1.1
+      }),
+      signal: AbortSignal.timeout(300000)
+    });
+
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    const data = await response.json();
+    assessmentText = cleanResponse(data.choices[0].message.content);
+
+    assessLoading.style.display = "none";
+    assessText.innerHTML = formatAssessment(assessmentText);
+  } catch (err) {
+    assessLoading.style.display = "none";
+    assessText.textContent = `Error generating assessment: ${err.message}\n\nPlease check the model server is running.`;
+  }
+});
+
+function formatAssessment(text) {
+  // Basic formatting: bold **text**, headers, line breaks
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^(#{1,3})\s+(.+)$/gm, (_, h, t) => `<h3>${t}</h3>`)
+    .replace(/^(\d+)\.\s+/gm, '<br><strong>$1.</strong> ')
+    .replace(/\n/g, '<br>');
+}
+
+// ── Assessment overlay controls ─────────────────────────────────────
+closeAssessBtn.addEventListener("click", () => {
+  assessOverlay.classList.remove("visible");
+});
+
+newScenarioBtn.addEventListener("click", () => {
+  assessOverlay.classList.remove("visible");
+  clearInterval(timerInterval);
+  interviewScreen.classList.remove("active");
+  selectScreen.classList.add("active");
+  sessionStorage.removeItem("pit_session");
+});
+
+downloadAssessBtn.addEventListener("click", () => {
+  if (!assessmentText) return;
+  const header = `PIT INTERVIEW ASSESSMENT\n${"=".repeat(50)}\n`;
+  const meta = `Scenario: ${currentScenario.offence} - ${currentScenario.suspectName}\nDate: ${new Date().toLocaleString()}\n${"=".repeat(50)}\n\n`;
+  downloadFile(`PIT_Assessment_${currentScenario.id}.txt`, header + meta + assessmentText);
+});
+
+// ── Download transcript ─────────────────────────────────────────────
+downloadBtn.addEventListener("click", () => {
+  if (transcriptEntries.length === 0) return;
+  const s = currentScenario;
+  let txt = `PIT SESSION TRANSCRIPT\n${"=".repeat(50)}\n`;
+  txt += `Mode: ${MODE_LABELS[s.mode] || s.mode}\n`;
+  if (s.offence) txt += `Offence: ${s.offence}${s.statute ? ` (${s.statute})` : ""}\n`;
+  if (s.suspectName) txt += `Suspect: ${s.suspectName}, ${s.suspectAge}, ${s.suspectGender}\n`;
+  if (s.witnessName) txt += `Witness: ${s.witnessName} (${s.witnessTypeLabel})\n`;
+  if (s.solicitor) txt += `Solicitor: ${s.solicitor}\n`;
+  txt += `Date: ${new Date().toLocaleString()}\n`;
+  txt += `${"=".repeat(50)}\n\n`;
+
+  transcriptEntries.forEach(e => {
+    txt += `[${e.time}] ${e.role.toUpperCase().padEnd(8)} ${e.content}\n`;
+  });
+
+  downloadFile(`PIT_Transcript_${s.id}.txt`, txt);
+});
+
+function downloadFile(name, content) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Session persistence ─────────────────────────────────────────────
+function saveSession() {
+  if (!currentScenario) return;
+  try {
+    sessionStorage.setItem("pit_session", JSON.stringify({
+      scenarioId: currentScenario.id,
+      mode: currentMode,
+      conversationHistory,
+      transcriptEntries,
+      startTime,
+      voiceId: currentVoiceId
+    }));
+  } catch (e) { /* storage full, ignore */ }
+}
+
+function restoreSession() {
+  if (!scenariosLoaded) return; // wait for scenarios to load
+  try {
+    const saved = sessionStorage.getItem("pit_session");
+    if (!saved) return;
+    const data = JSON.parse(saved);
+    const scenario = SCENARIOS.find(s => s.id === data.scenarioId);
+    if (!scenario) return;
+
+    currentScenario = scenario;
+    currentMode = scenario.mode;
+    conversationHistory = data.conversationHistory || [];
+    transcriptEntries = data.transcriptEntries || [];
+    startTime = data.startTime;
+    currentVoiceId = data.voiceId || null;
+
+    // Switch to interview screen
+    selectScreen.classList.remove("active");
+    interviewScreen.classList.add("active");
+
+    // Restore header
+    ihTitle.textContent = _getHeaderTitle(scenario);
+
+    // Restore mode-specific UI
+    const peacePillsContainer = $("#peacePills");
+    peacePillsContainer.style.display = isRoleplayMode(currentMode) ? "flex" : "none";
+    $(".quick-chips").style.display = isRoleplayMode(currentMode) ? "flex" : "none";
+    endBtn.style.display = isRoleplayMode(currentMode) ? "" : "none";
+
+    if (isRoleplayMode(currentMode)) {
+      renderBriefing();
+      briefingPanel.classList.add("collapsed");
+      briefingToggle.classList.add("collapsed");
+      briefingToggle.style.display = "";
+      briefingPanel.style.display = "";
+    } else {
+      briefingToggle.style.display = "none";
+      briefingPanel.style.display = "none";
+    }
+
+    _updateTypingIndicator();
+
+    // Restore transcript
+    transcriptTable.innerHTML = "";
+    const roleLabels = { officer: "OFFICER", suspect: "SUSPECT", witness: "WITNESS", pit: "PIT", system: "SYSTEM" };
+    transcriptEntries.forEach(e => {
+      const row = document.createElement("div");
+      row.className = `transcript-row ${e.role}`;
+      row.innerHTML = `
+        <div class="role-label">${roleLabels[e.role] || e.role.toUpperCase()}</div>
+        <div class="ts">${e.time}</div>
+        <div class="content">${escapeHtml(e.content)}</div>
+      `;
+      transcriptTable.appendChild(row);
+    });
+
+    // Restore timer
+    clearInterval(timerInterval);
+    timerInterval = setInterval(updateTimer, 1000);
+
+    // Restore PEACE phase (roleplay only)
+    if (isRoleplayMode(currentMode)) updatePeacePhase();
+
+    scrollToBottom();
+  } catch (e) {
+    sessionStorage.removeItem("pit_session");
+  }
+}
+
+// Note: restoreSession() is called from loadScenarios() after data is loaded
+
+// ═════════════════════════════════════════════════════════════════════
+// VOICE — STT (Mic + AudioWorklet + WebSocket) & TTS
+// ═════════════════════════════════════════════════════════════════════
+
+// AudioWorklet processor code (registered via Blob URL)
+const WORKLET_CODE = `
+class PCMProcessor extends AudioWorkletProcessor {
+  process(inputs) {
+    const input = inputs[0];
+    if (!input || !input[0] || input[0].length === 0) return true;
+    const samples = input[0];
+    const int16 = new Int16Array(samples.length);
+    for (let i = 0; i < samples.length; i++) {
+      const s = Math.max(-1, Math.min(1, samples[i]));
+      int16[i] = s < 0 ? s * 32768 : s * 32767;
+    }
+    this.port.postMessage(int16.buffer, [int16.buffer]);
+    return true;
+  }
+}
+registerProcessor('pcm-processor', PCMProcessor);
+`;
+
+// Mic toggle handler
+micBtn.addEventListener("click", () => {
+  if (micActive) {
+    stopListening();
+  } else {
+    startListening();
+  }
+});
+
+async function startListening() {
+  if (micActive || !voiceAvailable) return;
+
+  try {
+    // Request microphone access
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: 1,
+        sampleRate: { ideal: 16000 },
+        echoCancellation: true,
+        noiseSuppression: true,
+      }
+    });
+
+    // Create AudioContext at 16kHz for direct PCM output
+    audioContext = new AudioContext({ sampleRate: 16000 });
+
+    // Register AudioWorklet processor — use data URI for Firefox compatibility
+    // (Firefox silently fails with Blob URLs for AudioWorklet modules)
+    const workletDataUri = "data:application/javascript;charset=utf-8," + encodeURIComponent(WORKLET_CODE);
+    await audioContext.audioWorklet.addModule(workletDataUri);
+
+    // Create processor node and connect mic
+    workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
+    const source = audioContext.createMediaStreamSource(mediaStream);
+    source.connect(workletNode);
+
+    // Open WebSocket to voice service STT endpoint
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    sttSocket = new WebSocket(`${proto}//${location.host}/api/ws/stt`);
+    sttSocket.binaryType = "arraybuffer";
+
+    sttSocket.onopen = () => {
+      micActive = true;
+      micBtn.classList.add("listening");
+
+      // Forward PCM chunks from worklet to WebSocket
+      workletNode.port.onmessage = (e) => {
+        if (sttSocket && sttSocket.readyState === WebSocket.OPEN) {
+          sttSocket.send(e.data);
+        }
+      };
+    };
+
+    sttSocket.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "transcript" && msg.text) {
+          // Append transcription to textarea
+          const current = userInput.value.trim();
+          userInput.value = current ? current + " " + msg.text : msg.text;
+          userInput.dispatchEvent(new Event("input"));
+
+          // Brief visual flash
+          micBtn.classList.add("transcribing");
+          setTimeout(() => micBtn.classList.remove("transcribing"), 400);
+        }
+      } catch { /* ignore non-JSON */ }
+    };
+
+    sttSocket.onerror = () => {
+      console.error("[STT] WebSocket error");
+      stopListening();
+    };
+
+    sttSocket.onclose = () => {
+      if (micActive) stopListening();
+    };
+
+  } catch (err) {
+    console.error("[STT] Failed to start:", err);
+    stopListening();
+  }
+}
+
+function stopListening() {
+  micActive = false;
+  micBtn.classList.remove("listening", "transcribing");
+
+  if (workletNode) {
+    workletNode.port.onmessage = null;
+    workletNode.disconnect();
+    workletNode = null;
+  }
+  if (audioContext) {
+    audioContext.close().catch(() => {});
+    audioContext = null;
+  }
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = null;
+  }
+  if (sttSocket) {
+    if (sttSocket.readyState <= WebSocket.OPEN) {
+      sttSocket.close();
+    }
+    sttSocket = null;
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// FLASHCARD — PEACE Knowledge
+// ═════════════════════════════════════════════════════════════════════
+
+let fcCards = [];          // filtered flashcard scenarios
+let fcIndex = 0;           // current card index
+let fcSeen = new Set();    // set of seen card IDs
+let fcActiveTopic = "all"; // current topic filter
+let fcMode = "peace_knowledge"; // which mode the flashcards are showing
+
+const FC_TITLES = {
+  peace_knowledge: "PEACE Knowledge",
+  special_procedures: "Special Procedures",
+};
+
+const flashcardOverlay = $("#flashcardOverlay");
+const flashcardInner   = $("#flashcardInner");
+const fcQuestion       = $("#fcQuestion");
+const fcAnswer         = $("#fcAnswer");
+const fcQuestionRef    = $("#fcQuestionRef");
+const fcTopicBadge     = $("#fcTopicBadge");
+const fcDiffBadge      = $("#fcDiffBadge");
+const fcStripe         = $("#fcStripe");
+const fcProgress       = $("#fcProgress");
+const fcSeenEl         = $("#fcSeen");
+const fcTopicBar       = $("#fcTopicBar");
+const fcCloseBtn       = $("#fcCloseBtn");
+const fcPrevBtn        = $("#fcPrevBtn");
+const fcNextBtn        = $("#fcNextBtn");
+const fcShuffleBtn     = $("#fcShuffleBtn");
+
+function openFlashcards(startId, mode) {
+  fcMode = mode || "peace_knowledge";
+  fcActiveTopic = "all";
+  fcSeen = new Set();
+  _rebuildFcCards();
+
+  // Update overlay title
+  $("#flashcardOverlay h2").textContent = FC_TITLES[fcMode] || fcMode;
+
+  // Find starting card index
+  fcIndex = Math.max(0, fcCards.findIndex(s => s.id === startId));
+
+  // Build topic pills
+  const topics = [...new Set(SCENARIOS.filter(s => s.mode === fcMode).map(s => s.topic))];
+  fcTopicBar.innerHTML = `<button class="fc-topic-pill active" data-topic="all">All</button>`
+    + topics.map(t => `<button class="fc-topic-pill" data-topic="${t}">${t.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</button>`).join("");
+
+  // Topic pill click handlers
+  $$(".fc-topic-pill", fcTopicBar).forEach(pill => {
+    pill.addEventListener("click", () => {
+      $$(".fc-topic-pill", fcTopicBar).forEach(p => p.classList.remove("active"));
+      pill.classList.add("active");
+      fcActiveTopic = pill.dataset.topic;
+      _rebuildFcCards();
+      fcIndex = 0;
+      renderFlashcard();
+    });
+  });
+
+  renderFlashcard();
+  flashcardOverlay.classList.add("visible");
+}
+
+function _rebuildFcCards() {
+  const all = SCENARIOS.filter(s => s.mode === fcMode);
+  fcCards = fcActiveTopic === "all" ? [...all] : all.filter(s => s.topic === fcActiveTopic);
+}
+
+function renderFlashcard() {
+  if (fcCards.length === 0) {
+    fcQuestion.textContent = "No cards for this topic.";
+    fcAnswer.textContent = "";
+    fcQuestionRef.textContent = "";
+    fcProgress.textContent = "0 of 0";
+    return;
+  }
+
+  // Clamp index
+  if (fcIndex < 0) fcIndex = fcCards.length - 1;
+  if (fcIndex >= fcCards.length) fcIndex = 0;
+
+  const card = fcCards[fcIndex];
+
+  // Unflip
+  flashcardInner.classList.remove("flipped");
+
+  // Front
+  fcQuestion.textContent = card.title;
+  fcTopicBadge.textContent = card.topicLabel;
+  fcDiffBadge.textContent = card.difficulty;
+  fcDiffBadge.className = `diff-badge ${card.difficulty}`;
+  fcStripe.className = `fc-front-stripe ${card.difficulty}`;
+
+  // Back
+  fcAnswer.textContent = card.fullAnswer || card.description;
+  fcQuestionRef.textContent = `Q: ${card.title}`;
+
+  // Progress
+  fcProgress.textContent = `${fcIndex + 1} of ${fcCards.length}`;
+
+  // Mark seen
+  fcSeen.add(card.id);
+  const totalForMode = SCENARIOS.filter(s => s.mode === fcMode).length;
+  fcSeenEl.textContent = `${fcSeen.size}/${totalForMode} seen`;
+}
+
+function flipCard() {
+  flashcardInner.classList.toggle("flipped");
+}
+
+function nextCard() {
+  fcIndex++;
+  renderFlashcard();
+}
+
+function prevCard() {
+  fcIndex--;
+  renderFlashcard();
+}
+
+function shuffleFcCards() {
+  // Fisher-Yates
+  for (let i = fcCards.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [fcCards[i], fcCards[j]] = [fcCards[j], fcCards[i]];
+  }
+  fcIndex = 0;
+  renderFlashcard();
+}
+
+function closeFlashcards() {
+  flashcardOverlay.classList.remove("visible");
+}
+
+// Event listeners
+$("#flashcard").addEventListener("click", flipCard);
+fcCloseBtn.addEventListener("click", closeFlashcards);
+fcPrevBtn.addEventListener("click", prevCard);
+fcNextBtn.addEventListener("click", nextCard);
+fcShuffleBtn.addEventListener("click", shuffleFcCards);
+
+// Keyboard shortcuts (only when overlay is open)
+document.addEventListener("keydown", (e) => {
+  if (!flashcardOverlay.classList.contains("visible")) return;
+  if (e.key === " " || e.code === "Space") { e.preventDefault(); flipCard(); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); nextCard(); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); prevCard(); }
+  else if (e.key === "Escape") { e.preventDefault(); closeFlashcards(); }
+});
+
+// ── TTS — Suspect voice playback ────────────────────────────────────
+async function playSuspectVoice(text) {
+  if (!ttsEnabled.checked || !voiceAvailable || !text) return;
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, voice_id: currentVoiceId }),
+      signal: AbortSignal.timeout(60000),
+    });
+    if (!resp.ok) return;
+
+    const audioBlob = await resp.blob();
+    const url = URL.createObjectURL(audioBlob);
+    const audio = new Audio(url);
+    audio.onended = () => URL.revokeObjectURL(url);
+    audio.onerror = () => URL.revokeObjectURL(url);
+    audio.play().catch(() => URL.revokeObjectURL(url));
+  } catch (err) {
+    console.error("[TTS] Playback error:", err);
+  }
+}
+</script>
+</body>
+</html>

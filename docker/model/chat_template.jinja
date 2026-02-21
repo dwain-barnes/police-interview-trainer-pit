@@ -1,0 +1,38 @@
+{# Simplified Harmony template for PIT SFT model.
+   Skips the analysis channel — goes straight to assistant response.
+   Based on gpt-oss Harmony format but with modified generation prompt
+   to match how the model was fine-tuned (no channel separation in SFT data). #}
+
+{#- System Message ======================================================= #}
+{{- "<|start|>system<|message|>" }}
+{%- if messages[0].role == "developer" or messages[0].role == "system" %}
+    {{- messages[0].content }}
+{%- else %}
+    {{- "You are a helpful assistant." }}
+{%- endif %}
+{{- "<|end|>" }}
+
+{#- Developer / System message handling =================================== #}
+{%- if messages[0].role == "developer" or messages[0].role == "system" %}
+    {%- set loop_messages = messages[1:] %}
+{%- else %}
+    {%- set loop_messages = messages %}
+{%- endif %}
+
+{#- Render conversation messages =========================================== #}
+{%- for message in loop_messages -%}
+    {%- if message.role == 'assistant' -%}
+        {%- if loop.last and not add_generation_prompt %}
+            {{- "<|start|>assistant<|message|>" + message.content + "<|return|>" }}
+        {%- else %}
+            {{- "<|start|>assistant<|message|>" + message.content + "<|end|>" }}
+        {%- endif %}
+    {%- elif message.role == 'user' -%}
+        {{- "<|start|>user<|message|>" + message.content + "<|end|>" }}
+    {%- endif -%}
+{%- endfor -%}
+
+{#- Generation prompt — go straight to <|message|>, skip analysis channel #}
+{%- if add_generation_prompt -%}
+<|start|>assistant<|message|>
+{%- endif -%}
