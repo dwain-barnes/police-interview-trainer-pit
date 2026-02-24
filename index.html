@@ -1265,11 +1265,18 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
     <!-- Input -->
     <div class="input-area">
-      <div class="quick-chips">
-        <button class="chip" data-insert="I am cautioning you. You do not have to say anything. But it may harm your defence if you do not mention when questioned something which you later rely on in court. Anything you do say may be given in evidence. Do you understand the caution?">Caution</button>
-        <button class="chip" data-insert="Can you tell me in your own words what happened?">Open Question</button>
-        <button class="chip" data-insert="I am now concluding this interview. Is there anything else you wish to say?">Close Interview</button>
-        <button class="chip" data-insert="For the purposes of the recording, I am showing you exhibit ">Show Exhibit</button>
+      <div class="quick-chips" id="quickChips">
+        <!-- Engage & Explain phase chips -->
+        <button class="chip" data-phase="EE" data-dynamic="intro" data-insert="">Introduction</button>
+        <button class="chip" data-phase="EE" data-dynamic="legal" data-insert="">Legal Rights</button>
+        <button class="chip" data-phase="EE" data-insert="I must caution you. You do not have to say anything. But it may harm your defence if you do not mention when questioned something which you later rely on in court. Anything you do say may be given in evidence. Do you understand?">Caution</button>
+        <button class="chip" data-phase="EE" data-dynamic="sigstatement" data-insert="">Sig. Statement</button>
+        <button class="chip" data-phase="EE" data-dynamic="groundrules" data-insert="">Ground Rules</button>
+        <!-- Account phase chips -->
+        <button class="chip" data-phase="A" data-insert="Can you tell me in your own words what happened?">Open Question</button>
+        <button class="chip" data-phase="A" data-insert="For the purposes of the recording, I am showing you exhibit ">Show Exhibit</button>
+        <!-- Closure phase chip -->
+        <button class="chip" data-phase="C" data-insert="I am now concluding this interview. Is there anything else you wish to say or clarify before we finish?">Close Interview</button>
       </div>
       <div class="input-row">
         <textarea id="userInput" rows="1" placeholder="Type your interview question..."></textarea>
@@ -1687,7 +1694,7 @@ const SCENARIO_SYSTEM_PROMPT = `You are PIT (Police Interview Trainer). Present 
 
 const SPECIAL_PROCEDURE_SYSTEM_PROMPT = `You are PIT (Police Interview Trainer), demonstrating special interview procedures.\n\nGuide the trainee through the correct process step by step, using natural conversational language suitable for voice delivery. Reference the relevant legislation and PACE Codes of Practice where appropriate.`;
 
-const INLINE_ASSESSMENT_SYSTEM_PROMPT = `You are PIT (Police Interview Trainer), an expert assessor evaluating police interview technique against PIP Level 1 standards.\n\nAssess the interview transcript against these criteria:\n1. PEACE Framework Adherence -- did the officer follow Planning, Engage & Explain, Account/Clarification/Challenge, Closure, Evaluation?\n2. Questioning Technique -- use of open questions, avoidance of leading questions, 5WH coverage\n3. Caution Delivery -- accurate wording, correct timing, understanding check\n4. Legal Compliance -- PACE Code C, Code E, right to legal advice, appropriate adult\n5. Rapport Building -- professional manner, active listening, appropriate formality\n6. Challenge Technique -- evidence presentation, handling inconsistencies, special warnings\n7. Professional Conduct -- fairness, objectivity, demeanour\n\nGrade: Outstanding, Good, Satisfactory, or Unsatisfactory.\nGive specific feedback on each PEACE phase with examples from the transcript.\nUse a constructive, professional tone.`;
+const INLINE_ASSESSMENT_SYSTEM_PROMPT = `You are PIT (Police Interview Trainer), an expert assessor evaluating police interview technique against PIP Level 1 standards.\n\nAssess the interview transcript against these criteria:\n\n1. PEACE Framework Adherence:\n   a. Engage & Explain -- Did the officer provide a full PACE Code E compliant introduction (state date, time, place, officer identities, ask suspect to identify themselves, identify solicitor/appropriate adult, explain recording notice)? Did the officer remind the suspect of their right to free legal advice (per PACE Code C s6)? Was the interview purpose and ground rules explained before moving to account?\n   b. Account -- Did the officer obtain a full uninterrupted account using open questions BEFORE moving to challenge? Did they allow the suspect to give their version in their own words?\n   c. Challenge -- Was evidence introduced properly with exhibit references? Were inconsistencies addressed fairly?\n   d. Closure -- Was the suspect given opportunity to add or clarify anything? Was the interview properly concluded?\n\n2. Questioning Technique -- use of open questions (TED, 5WH), avoidance of leading questions, appropriate probing and clarification\n\n3. Caution Delivery -- accurate wording per PACE Code C s10.5 (\"You do not have to say anything. But it may harm your defence if you do not mention when questioned something which you later rely on in court. Anything you do say may be given in evidence.\"), correct timing, understanding check, any significant statement or silence put to suspect\n\n4. Legal Compliance -- PACE Code C, Code E, right to legal advice reminder, appropriate adult where required\n\n5. Rapport Building -- professional manner, active listening, appropriate formality, engagement before questioning\n\n6. Challenge Technique -- evidence presentation, handling inconsistencies, special warnings (s36/s37 CJPOA 1994 where applicable)\n\n7. Professional Conduct -- fairness, objectivity, demeanour\n\nGrade: Outstanding, Good, Satisfactory, or Unsatisfactory.\nGive specific feedback on each PEACE phase with examples from the transcript. Highlight any mandatory steps that were missed.\nUse a constructive, professional tone.`;
 
 function buildSystemPrompt(s) {
   const mode = s.mode;
@@ -1759,6 +1766,7 @@ function startInterview(id) {
   // Show/hide quick chips and briefing (only for roleplay modes)
   const quickChips = $(".quick-chips");
   quickChips.style.display = isRoleplayMode(currentMode) ? "flex" : "none";
+  if (isRoleplayMode(currentMode)) updateChipVisibility("P");
 
   // Briefing — only for roleplay
   if (isRoleplayMode(currentMode)) {
@@ -2001,10 +2009,49 @@ userInput.addEventListener("keydown", (e) => {
 
 sendBtn.addEventListener("click", sendMessage);
 
-// Quick chips
+// Quick chips — dynamic content generation for scenario-aware chips
+function getChipText(chip) {
+  const dynamic = chip.dataset.dynamic;
+  if (!dynamic || !currentScenario) return chip.dataset.insert;
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const timeStr = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const solicitorName = currentScenario.solicitor || null;
+  const offence = currentScenario.offenceDesc || currentScenario.offence || "the matter under investigation";
+
+  if (dynamic === "intro") {
+    let text = `This interview is being audio recorded. The date is ${dateStr}, the time by the clock on the wall is ${timeStr}, and we are at [station name] police station. I am [rank and name] attached to [station]. Also present is [second officer rank and name].`;
+    if (solicitorName) {
+      text += ` Also present is your solicitor ${solicitorName}.`;
+    } else {
+      text += ` There is no other person present.`;
+    }
+    text += ` Can you please state your full name for the recording? At the conclusion of this interview, I will give you a notice explaining what will happen to the recording.`;
+    return text;
+  }
+
+  if (dynamic === "legal") {
+    if (solicitorName) {
+      return `I must remind you that you have the right to free and independent legal advice. You can speak to your solicitor ${solicitorName} in private at any time during this interview. This legal advice is free. Do you wish to speak to your solicitor before we continue?`;
+    }
+    return `I must remind you that you have the right to free and independent legal advice. You can speak to a solicitor in private at any time of day or night and this legal advice is free. You can speak to a solicitor in person or on the telephone. If you do want legal advice, the interview can be delayed. Do you wish to speak to a solicitor?`;
+  }
+
+  if (dynamic === "sigstatement") {
+    return `Before we continue, I need to put to you that prior to this interview you [made a significant statement / remained silent when]. Do you confirm or deny that, and is there anything you wish to add?`;
+  }
+
+  if (dynamic === "groundrules") {
+    return `The purpose of this interview is to give you the opportunity to give your account regarding ${offence}. I am going to ask you to tell me in your own words what happened. Please give me as much detail as you can. If you do not know something, please say so. Do not make anything up. Do you have any questions before we begin?`;
+  }
+
+  return chip.dataset.insert;
+}
+
 $$(".chip").forEach(chip => {
   chip.addEventListener("click", () => {
-    userInput.value = chip.dataset.insert;
+    userInput.value = getChipText(chip);
     userInput.dispatchEvent(new Event("input"));
     userInput.focus();
   });
@@ -2117,19 +2164,23 @@ function updatePeacePhase() {
   let phase = "P"; // Planning (pre-interview)
 
   // Heuristic detection based on turn count and keywords
-  const hasIntroduction = /my name is|i am (pc|dc|detective|officer)|for the (purpose|tape|recording)/i.test(allOfficerText);
-  const hasCaution = /you do not have to say anything|caution/i.test(allOfficerText);
+  const hasIntroduction = /my name is|i am (pc|dc|detective|officer)|for the (purpose|tape|recording)|audio recorded|being recorded/i.test(allOfficerText);
+  const hasCaution = /you do not have to say anything|i must caution you/i.test(allOfficerText);
+  const hasLegalRights = /right to.*(legal advice|solicitor)|free and independent legal advice|entitled to.*legal/i.test(allOfficerText);
+  const hasGroundRules = /purpose of this interview|your own words.*what happened|give.*as much detail|do you have any questions before/i.test(allOfficerText);
   const hasAccount = /tell me|what happened|can you explain|describe|your own words|walk me through/i.test(allOfficerText);
-  const hasChallenge = /evidence|cctv|witness|statement|fingerprint|recovered|found on|exhibit|inconsist|earlier you said/i.test(allOfficerText);
-  const hasClosure = /concluding|anything else|wish to (say|add)|closing|end.*(interview|recording)|is there anything/i.test(allOfficerText);
+  const hasChallenge = /\b(the |this )evidence\b|cctv|witness statement|fingerprint|recovered|found on|exhibit|inconsist|earlier you said|presenting.*(evidence|exhibit)/i.test(allOfficerText);
+  const hasClosure = /concluding|anything else you wish|wish to (say|add)|closing this|(\b|^)end(ing)? (this |the )?(interview|recording)|is there anything (else )?you/i.test(allOfficerText);
 
   if (hasClosure && turnCount >= 4) {
     phase = "C";
   } else if (hasChallenge && turnCount >= 4) {
     phase = "A";
+  } else if (hasAccount && hasGroundRules && turnCount >= 3) {
+    phase = "A";
   } else if (hasAccount && turnCount >= 3) {
     phase = "A";
-  } else if (hasCaution || (hasIntroduction && turnCount >= 2)) {
+  } else if (hasCaution || hasLegalRights || hasGroundRules || (hasIntroduction && turnCount >= 2)) {
     phase = "EE";
   } else if (turnCount >= 1) {
     phase = "EE";
@@ -2143,6 +2194,28 @@ function updatePeacePhase() {
     pill.classList.remove("active", "completed");
     if (i < activeIdx) pill.classList.add("completed");
     if (i === activeIdx) pill.classList.add("active");
+  });
+
+  // Update chip visibility based on current phase
+  updateChipVisibility(phase);
+}
+
+// Show/hide chips based on active PEACE phase
+function updateChipVisibility(phase) {
+  const chips = $$("#quickChips .chip");
+  chips.forEach(chip => {
+    const chipPhase = chip.dataset.phase;
+    if (!chipPhase) { chip.style.display = ""; return; }
+    // In P or EE phase, show EE chips. In A phase, show A chips. In C phase, show C chips.
+    if (phase === "P" || phase === "EE") {
+      chip.style.display = chipPhase === "EE" ? "" : "none";
+    } else if (phase === "A") {
+      chip.style.display = chipPhase === "A" ? "" : "none";
+    } else if (phase === "C") {
+      chip.style.display = chipPhase === "C" ? "" : "none";
+    } else {
+      chip.style.display = "";
+    }
   });
 }
 
